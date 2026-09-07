@@ -190,7 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser({ id: demoProfile.id, email: demoProfile.email });
     localStorage.setItem('dgd_demo_role', newRole);
     localStorage.setItem('dgd_profile', JSON.stringify(demoProfile));
-    router.push(`/${newRole}`);
+    router.push('/feed');
   };
 
   const saveProfile = (updatedData: Partial<UserProfile>) => {

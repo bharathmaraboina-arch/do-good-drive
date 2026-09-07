@@ -34,7 +34,7 @@ function LoginFormContent() {
     if (res.error) {
       setServerError(res.error);
     } else {
-      router.push(redirectPath !== '/' ? redirectPath : '/volunteer');
+      router.push(redirectPath !== '/' ? redirectPath : '/feed');
     }
   };
 

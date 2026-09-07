@@ -30,6 +30,9 @@ export default function LandingPage() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-6 text-xs font-medium text-[#6B6870]">
+            <Link href="/feed" className="text-[#6D3A70] font-semibold hover:text-[#552C59] transition-colors">
+              Community Feed
+            </Link>
             <Link href="#roles" className="hover:text-[#25232A] transition-colors">
               Role Tracks
             </Link>
@@ -41,7 +44,13 @@ export default function LandingPage() {
             </Link>
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/feed"
+              className="text-xs font-semibold text-[#6D3A70] bg-[#F1E7F3] hover:bg-[#FAF5FA] px-3 py-1.5 rounded-lg border border-[#E8E3E8] transition-colors"
+            >
+              Open Feed &rarr;
+            </Link>
             <Link
               href="/login"
               className="text-xs font-medium text-[#6B6870] hover:text-[#25232A] px-3 py-1.5 rounded-lg hover:bg-[#FAF5FA] transition-colors"
