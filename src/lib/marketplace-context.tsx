@@ -12,6 +12,7 @@ import {
   AttendanceStatus,
   HoursVerificationStatus,
   VolunteerImpactSummary,
+  VolunteerCertificate,
 } from './types';
 import { useAuth } from './auth-context';
 import { useOnboarding } from './onboarding-context';
@@ -75,6 +76,15 @@ interface MarketplaceContextType {
   getRecordsForOpportunity: (opportunityId: string) => ActivityCompletionRecord[];
   getRecordsForNgo: (ngoProfileId: string) => ActivityCompletionRecord[];
   getImpactSummaryForVolunteer: (volunteerProfileId: string) => VolunteerImpactSummary;
+
+  // Certificate Generation & Verification
+  certificates: VolunteerCertificate[];
+  generateCertificateForRecord: (recordId: string) => { success: boolean; certificate?: VolunteerCertificate; message?: string };
+  generateCertificatesForOpportunity: (opportunityId: string) => { success: boolean; generatedCount: number; certificates: VolunteerCertificate[]; message?: string };
+  getCertificateForRecord: (recordId: string) => VolunteerCertificate | undefined;
+  getCertificateById: (certificateId: string) => VolunteerCertificate | undefined;
+  getCertificatesForVolunteer: (volunteerProfileId: string) => VolunteerCertificate[];
+  getCumulativeCertificateForVolunteer: (volunteerProfileId: string) => VolunteerCertificate | null;
 }
 
 const INITIAL_OPPORTUNITIES: Opportunity[] = [
@@ -268,6 +278,9 @@ const INITIAL_ACTIVITY_RECORDS: ActivityCompletionRecord[] = [
     verifiedAt: '2026-09-13T10:00:00Z',
     verifiedByNgoId: 'ngo-1',
     notes: 'Outstanding contribution. Co-led Basin 2 native planting line.',
+    certificateIssued: true,
+    certificateId: 'cert-demo-1',
+    certificateIssuedAt: '2026-09-13T10:15:00Z',
     createdAt: '2026-09-12T14:00:00Z',
     updatedAt: '2026-09-13T10:00:00Z',
   },
@@ -292,17 +305,44 @@ const INITIAL_ACTIVITY_RECORDS: ActivityCompletionRecord[] = [
   },
 ];
 
+const INITIAL_CERTIFICATES: VolunteerCertificate[] = [
+  {
+    id: 'cert-demo-1',
+    recordId: 'act-demo-1',
+    certificateNumber: 'CERT-DGD-2026-GC84992-001',
+    volunteerProfileId: 'vol-1',
+    volunteerFullName: 'Sarah Jenkins',
+    volunteerAvatarUrl: '',
+    ngoProfileId: 'ngo-1',
+    ngoName: 'GreenCanopy Initiative',
+    ngoLogoUrl: '',
+    ngoRegistrationNumber: '501(c)(3) #84-9923841',
+    ngoRepresentativeName: 'Marcus Vance',
+    ngoRepresentativeTitle: 'Executive Director',
+    opportunityId: 'opp-market-1',
+    opportunityTitle: 'Urban Reforestation & Riparian Planting Drive',
+    cause: 'Environment',
+    activityDate: '2026-09-12',
+    hours: 4.0,
+    verifiedAt: '2026-09-13T10:00:00Z',
+    issuedAt: '2026-09-13T10:15:00Z',
+    notes: 'Outstanding contribution. Co-led Basin 2 native planting line.',
+    verificationCode: 'DGD-VERIFY-84992-SJ26',
+  },
+];
+
 const MarketplaceContext = createContext<MarketplaceContextType | undefined>(undefined);
 
 export function MarketplaceProvider({ children }: { children: React.ReactNode }) {
   const { profile } = useAuth();
   const { volunteerProfile, verifications } = useOnboarding();
-  const { markNotificationAsRead } = useFeed();
+  const { markNotificationAsRead, addNotification } = useFeed();
 
   const [opportunities, setOpportunities] = useState<Opportunity[]>(INITIAL_OPPORTUNITIES);
   const [savedOpportunityIds, setSavedOpportunityIds] = useState<string[]>(['opp-market-1']);
   const [applications, setApplications] = useState<Application[]>(INITIAL_APPLICATIONS);
   const [activityRecords, setActivityRecords] = useState<ActivityCompletionRecord[]>(INITIAL_ACTIVITY_RECORDS);
+  const [certificates, setCertificates] = useState<VolunteerCertificate[]>(INITIAL_CERTIFICATES);
   const [isHydrated, setIsHydrated] = useState(false);
 
   // Safe client hydration
@@ -319,6 +359,9 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
 
       const savedActs = localStorage.getItem('dgd_market_activities');
       if (savedActs) setActivityRecords(JSON.parse(savedActs));
+
+      const savedCerts = localStorage.getItem('dgd_market_certificates');
+      if (savedCerts) setCertificates(JSON.parse(savedCerts));
     } catch (e) {
       console.error('Failed to load marketplace storage', e);
     }
@@ -332,8 +375,9 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       localStorage.setItem('dgd_saved_opp_ids', JSON.stringify(savedOpportunityIds));
       localStorage.setItem('dgd_market_applications', JSON.stringify(applications));
       localStorage.setItem('dgd_market_activities', JSON.stringify(activityRecords));
+      localStorage.setItem('dgd_market_certificates', JSON.stringify(certificates));
     }
-  }, [opportunities, savedOpportunityIds, applications, activityRecords, isHydrated]);
+  }, [opportunities, savedOpportunityIds, applications, activityRecords, certificates, isHydrated]);
 
   // Check if current NGO is verified
   const isNgoVerified = (ngoId: string): boolean => {
@@ -802,6 +846,227 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
     };
   };
 
+  const generateCertificateForRecord = (recordId: string) => {
+    const record = activityRecords.find((r) => r.id === recordId);
+    if (!record) {
+      return { success: false, message: 'Activity record not found.' };
+    }
+
+    if (record.attendanceStatus !== 'ATTENDED') {
+      return { success: false, message: 'Attendance must be marked as ATTENDED before generating a certificate.' };
+    }
+
+    if (record.hoursStatus !== 'VERIFIED') {
+      return { success: false, message: 'Volunteer hours must be VERIFIED by the NGO before generating a certificate.' };
+    }
+
+    // If already generated, return existing certificate
+    if (record.certificateIssued && record.certificateId) {
+      const existing = certificates.find((c) => c.id === record.certificateId || c.recordId === record.id);
+      if (existing) {
+        return { success: true, certificate: existing, message: 'Certificate has already been generated.' };
+      }
+    }
+
+    const now = new Date().toISOString();
+    const certId = 'cert-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7);
+    const certNumber = `CERT-DGD-2026-${record.ngoProfileId.toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`;
+    const verificationCode = `DGD-V-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+    const newCert: VolunteerCertificate = {
+      id: certId,
+      recordId: record.id,
+      certificateNumber: certNumber,
+      volunteerProfileId: record.volunteerProfileId,
+      volunteerFullName: record.volunteerFullName || 'Volunteer',
+      volunteerAvatarUrl: record.volunteerAvatarUrl,
+      ngoProfileId: record.ngoProfileId,
+      ngoName: record.ngoName || 'GreenCanopy Initiative',
+      ngoLogoUrl: '',
+      ngoRegistrationNumber: '501(c)(3) #84-9923841',
+      ngoRepresentativeName: profile?.fullName || 'Marcus Vance',
+      ngoRepresentativeTitle: 'Executive Director',
+      opportunityId: record.opportunityId,
+      opportunityTitle: record.opportunityTitle,
+      cause: record.cause || 'Environment',
+      activityDate: record.activityDate,
+      hours: record.hours,
+      verifiedAt: record.verifiedAt || now,
+      issuedAt: now,
+      notes: record.notes,
+      verificationCode,
+    };
+
+    setCertificates((prev) => [newCert, ...prev]);
+
+    setActivityRecords((prev) =>
+      prev.map((r) =>
+        r.id === record.id
+          ? {
+              ...r,
+              certificateIssued: true,
+              certificateId: certId,
+              certificateIssuedAt: now,
+            }
+          : r
+      )
+    );
+
+    // Send push / in-app notification to volunteer
+    addNotification({
+      recipientId: record.volunteerProfileId,
+      type: 'CERTIFICATE_GENERATED',
+      title: `Official Certificate Issued: ${record.opportunityTitle}`,
+      message: `${record.ngoName} has issued your official volunteer certificate honoring ${record.hours} hours of verified service. You can view, download, or share your authentic credential now.`,
+      linkUrl: `/certificates/${certId}`,
+      read: false,
+    });
+
+    return {
+      success: true,
+      certificate: newCert,
+      message: `Official certificate generated and issued for ${record.volunteerFullName}!`,
+    };
+  };
+
+  const generateCertificatesForOpportunity = (opportunityId: string) => {
+    // Find all attended & verified records for this opportunity
+    const records = activityRecords.filter(
+      (r) => r.opportunityId === opportunityId && r.attendanceStatus === 'ATTENDED' && r.hoursStatus === 'VERIFIED'
+    );
+
+    const pendingCertRecords = records.filter((r) => !r.certificateIssued);
+
+    if (pendingCertRecords.length === 0) {
+      if (records.length === 0) {
+        return {
+          success: false,
+          generatedCount: 0,
+          certificates: [],
+          message: 'No volunteers with verified hours and attended status found for this opportunity.',
+        };
+      }
+      return {
+        success: false,
+        generatedCount: 0,
+        certificates: [],
+        message: 'All verified volunteers for this opportunity already have certificates generated.',
+      };
+    }
+
+    const newlyCreated: VolunteerCertificate[] = [];
+    const now = new Date().toISOString();
+
+    pendingCertRecords.forEach((record) => {
+      const certId = 'cert-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7);
+      const certNumber = `CERT-DGD-2026-${record.ngoProfileId.toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`;
+      const verificationCode = `DGD-V-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+      const newCert: VolunteerCertificate = {
+        id: certId,
+        recordId: record.id,
+        certificateNumber: certNumber,
+        volunteerProfileId: record.volunteerProfileId,
+        volunteerFullName: record.volunteerFullName || 'Volunteer',
+        volunteerAvatarUrl: record.volunteerAvatarUrl,
+        ngoProfileId: record.ngoProfileId,
+        ngoName: record.ngoName || 'GreenCanopy Initiative',
+        ngoLogoUrl: '',
+        ngoRegistrationNumber: '501(c)(3) #84-9923841',
+        ngoRepresentativeName: profile?.fullName || 'Marcus Vance',
+        ngoRepresentativeTitle: 'Executive Director',
+        opportunityId: record.opportunityId,
+        opportunityTitle: record.opportunityTitle,
+        cause: record.cause || 'Environment',
+        activityDate: record.activityDate,
+        hours: record.hours,
+        verifiedAt: record.verifiedAt || now,
+        issuedAt: now,
+        notes: record.notes,
+        verificationCode,
+      };
+
+      newlyCreated.push(newCert);
+
+      // Trigger notification for each volunteer
+      addNotification({
+        recipientId: record.volunteerProfileId,
+        type: 'CERTIFICATE_GENERATED',
+        title: `Official Certificate Issued: ${record.opportunityTitle}`,
+        message: `${record.ngoName} has issued your official volunteer certificate honoring ${record.hours} hours of verified service.`,
+        linkUrl: `/certificates/${certId}`,
+        read: false,
+      });
+    });
+
+    setCertificates((prev) => [...newlyCreated, ...prev]);
+
+    setActivityRecords((prev) =>
+      prev.map((r) => {
+        const matchingCreated = newlyCreated.find((c) => c.recordId === r.id);
+        if (matchingCreated) {
+          return {
+            ...r,
+            certificateIssued: true,
+            certificateId: matchingCreated.id,
+            certificateIssuedAt: now,
+          };
+        }
+        return r;
+      })
+    );
+
+    return {
+      success: true,
+      generatedCount: newlyCreated.length,
+      certificates: newlyCreated,
+      message: `Successfully generated and issued ${newlyCreated.length} certificates with volunteer notifications sent!`,
+    };
+  };
+
+  const getCertificateForRecord = (recordId: string): VolunteerCertificate | undefined => {
+    return certificates.find((c) => c.recordId === recordId);
+  };
+
+  const getCertificateById = (certificateId: string): VolunteerCertificate | undefined => {
+    return certificates.find((c) => c.id === certificateId || c.certificateNumber === certificateId);
+  };
+
+  const getCertificatesForVolunteer = (volunteerProfileId: string): VolunteerCertificate[] => {
+    return certificates.filter(
+      (c) => c.volunteerProfileId === volunteerProfileId || (volunteerProfileId === 'vol-1' && (c.volunteerProfileId === 'vol-1' || c.volunteerFullName === 'Sarah Jenkins'))
+    );
+  };
+
+  const getCumulativeCertificateForVolunteer = (volunteerProfileId: string): VolunteerCertificate | null => {
+    const summary = getImpactSummaryForVolunteer(volunteerProfileId);
+    if (summary.totalVerifiedHours <= 0) return null;
+
+    return {
+      id: `cumul-cert-${volunteerProfileId}`,
+      recordId: 'cumulative-record',
+      certificateNumber: `CERT-DGD-CUMULATIVE-${volunteerProfileId.toUpperCase()}-2026`,
+      volunteerProfileId,
+      volunteerFullName: 'Sarah Jenkins',
+      volunteerAvatarUrl: '',
+      ngoProfileId: 'platform-registry',
+      ngoName: 'Do Good Drive Verified Impact Registry',
+      ngoLogoUrl: '',
+      ngoRegistrationNumber: 'Global Impact Accreditation #DGD-REG-2026',
+      ngoRepresentativeName: 'Platform Verification Board',
+      ngoRepresentativeTitle: 'Chief Impact Registrar',
+      opportunityId: 'all-activities',
+      opportunityTitle: 'Cumulative Verified Community Impact & Service Hours',
+      cause: summary.causesSupported.join(', ') || 'Multi-Cause Community Stewardship',
+      activityDate: '2026 Active Season',
+      hours: summary.totalVerifiedHours,
+      verifiedAt: new Date().toISOString(),
+      issuedAt: new Date().toISOString(),
+      notes: `Verified across ${summary.activitiesCompletedCount} community initiatives and ${summary.ngosSupportedCount} accredited non-profit organizations.`,
+      verificationCode: `DGD-CUMUL-${volunteerProfileId.toUpperCase()}-VERIFIED`,
+    };
+  };
+
   return (
     <MarketplaceContext.Provider
       value={{
@@ -809,6 +1074,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
         savedOpportunityIds,
         applications,
         activityRecords,
+        certificates,
         createOpportunity,
         updateOpportunity,
         togglePublishOpportunity,
@@ -827,6 +1093,12 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
         getRecordsForOpportunity,
         getRecordsForNgo,
         getImpactSummaryForVolunteer,
+        generateCertificateForRecord,
+        generateCertificatesForOpportunity,
+        getCertificateForRecord,
+        getCertificateById,
+        getCertificatesForVolunteer,
+        getCumulativeCertificateForVolunteer,
       }}
     >
       {children}

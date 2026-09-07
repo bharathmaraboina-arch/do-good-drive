@@ -6,7 +6,8 @@ import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useMarketplace } from '@/lib/marketplace-context';
-import { AttendanceStatus, HoursVerificationStatus } from '@/lib/types';
+import { AttendanceStatus, HoursVerificationStatus, VolunteerCertificate } from '@/lib/types';
+import CertificateModal from '@/components/certificates/CertificateModal';
 import {
   ArrowLeft,
   Users,
@@ -15,6 +16,8 @@ import {
   AlertCircle,
   Save,
   Check,
+  Award,
+  ExternalLink,
 } from 'lucide-react';
 
 interface ParticipantsPageProps {
@@ -28,6 +31,10 @@ export default function OpportunityParticipantsPage({ params }: ParticipantsPage
     getApplicationsForOpportunity,
     getRecordsForOpportunity,
     recordAttendanceAndHours,
+    generateCertificateForRecord,
+    generateCertificatesForOpportunity,
+    getCertificateForRecord,
+    getCertificateById,
   } = useMarketplace();
 
   const opp = getOpportunityById(resolvedParams.id);
@@ -36,7 +43,6 @@ export default function OpportunityParticipantsPage({ params }: ParticipantsPage
   );
   const participantRecords = getRecordsForOpportunity(resolvedParams.id);
 
-  // Form row local editing state
   const [formState, setFormState] = useState<
     Record<
       string,
@@ -51,6 +57,8 @@ export default function OpportunityParticipantsPage({ params }: ParticipantsPage
   >({});
 
   const [toastMessage, setToastMessage] = useState<{ text: string; isError?: boolean } | null>(null);
+  const [selectedCertificate, setSelectedCertificate] = useState<VolunteerCertificate | null>(null);
+  const [isCertModalOpen, setIsCertModalOpen] = useState(false);
 
   if (!opp) {
     return (
@@ -145,6 +153,65 @@ export default function OpportunityParticipantsPage({ params }: ParticipantsPage
 
     setToastMessage({ text: 'Hours verified and officially credited to volunteer impact!' });
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleGenerateSingleCertificate = (
+    recordId: string,
+    appId: string,
+    volId: string,
+    defaultRec: typeof participantRecords[0]
+  ) => {
+    const current = getRowValues(appId, defaultRec);
+    // Ensure attendance and hours are confirmed in state
+    recordAttendanceAndHours({
+      applicationId: appId,
+      opportunityId: opp.id,
+      volunteerProfileId: volId,
+      attendanceStatus: 'ATTENDED',
+      activityDate: current.activityDate,
+      hours: Number(current.hours) || 4.0,
+      hoursStatus: 'VERIFIED',
+      notes: current.notes,
+    });
+
+    const res = generateCertificateForRecord(recordId);
+    if (res.success && res.certificate) {
+      setSelectedCertificate(res.certificate);
+      setIsCertModalOpen(true);
+      setToastMessage({
+        text: `Official certificate generated for ${res.certificate.volunteerFullName}! In-app notification sent to the volunteer.`,
+      });
+    } else {
+      setToastMessage({ text: res.message || 'Could not generate certificate', isError: true });
+    }
+    setTimeout(() => setToastMessage(null), 4500);
+  };
+
+  const handleGenerateAllCertificates = () => {
+    const res = generateCertificatesForOpportunity(opp.id);
+    if (res.success) {
+      if (res.certificates.length > 0) {
+        setSelectedCertificate(res.certificates[0]);
+        setIsCertModalOpen(true);
+      }
+      setToastMessage({
+        text: `Successfully generated ${res.generatedCount} certificates! Push notifications sent to all verified participants.`,
+      });
+    } else {
+      setToastMessage({ text: res.message || 'No pending certificates to generate', isError: true });
+    }
+    setTimeout(() => setToastMessage(null), 4500);
+  };
+
+  const handleViewCertificate = (recordId: string, certId?: string) => {
+    const cert = (certId ? getCertificateById(certId) : null) || getCertificateForRecord(recordId);
+    if (cert) {
+      setSelectedCertificate(cert);
+      setIsCertModalOpen(true);
+    } else {
+      setToastMessage({ text: 'Certificate not found for this participant', isError: true });
+      setTimeout(() => setToastMessage(null), 3000);
+    }
   };
 
   return (
@@ -242,7 +309,7 @@ export default function OpportunityParticipantsPage({ params }: ParticipantsPage
         />
       ) : (
         <div className="bg-white rounded-xl border border-[#E8E3E8] shadow-xs overflow-hidden">
-          <div className="p-4 bg-[#FAF5FA] border-b border-[#E8E3E8] flex items-center justify-between">
+          <div className="p-4 bg-[#FAF5FA] border-b border-[#E8E3E8] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wider text-[#25232A]">
                 Volunteer Attendance &amp; Hours Certification
@@ -251,9 +318,22 @@ export default function OpportunityParticipantsPage({ params }: ParticipantsPage
                 Volunteers cannot self-declare attendance or hours. Official impact requires NGO verification.
               </p>
             </div>
-            <span className="text-xs font-semibold text-[#6D3A70]">
-              Scheduled: {opp.duration || '4 Hours'}
-            </span>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="text-xs font-semibold text-[#6D3A70]">
+                Scheduled: {opp.duration || '4 Hours'}
+              </span>
+              {attendedCount > 0 && verifiedCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleGenerateAllCertificates}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#6D3A70] hover:bg-[#552C59] text-white shadow-xs transition-colors cursor-pointer"
+                  title="Generate certificates for all attended & verified volunteers"
+                >
+                  <Award className="w-3.5 h-3.5" />
+                  <span>Generate Certificates for All Verified ({verifiedCount})</span>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="divide-y divide-[#E8E3E8]">
@@ -416,12 +496,67 @@ export default function OpportunityParticipantsPage({ params }: ParticipantsPage
                       className="w-full px-2.5 py-1 text-xs text-[#6B6870] placeholder-[#8B8790] bg-[#FBFAF8] border border-[#E8E3E8] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#A85AAA] focus:border-[#6D3A70]"
                     />
                   </div>
+
+                  {/* Certificate Action Strip */}
+                  <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-[#FAF5FA]">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold text-[#8B8790] uppercase tracking-wider">
+                        Official Certificate:
+                      </span>
+                      {isAttended && isVerified ? (
+                        rec.certificateIssued || getCertificateForRecord(rec.id) ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#15803D] bg-[#DCFCE7] px-2 py-0.5 rounded">
+                            <CheckCircle2 className="w-3 h-3" /> Certificate Issued
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#6D3A70] bg-[#F1E7F3] px-2 py-0.5 rounded">
+                            <Award className="w-3 h-3" /> Ready for Certificate Generation
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-[11px] text-[#8B8790] italic">
+                          Mark attendance &amp; verify hours to unlock certificate generation
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {isAttended && isVerified && (
+                        rec.certificateIssued || getCertificateForRecord(rec.id) ? (
+                          <button
+                            type="button"
+                            onClick={() => handleViewCertificate(rec.id, rec.certificateId)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#6D3A70] bg-[#F1E7F3] hover:bg-[#E8D9EB] rounded-lg transition-colors cursor-pointer"
+                          >
+                            <Award className="w-3.5 h-3.5" />
+                            <span>View / Download Certificate</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleGenerateSingleCertificate(rec.id, rec.applicationId, rec.volunteerProfileId, rec)}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-[#6D3A70] hover:bg-[#552C59] rounded-lg shadow-xs transition-colors cursor-pointer"
+                          >
+                            <Award className="w-3.5 h-3.5" />
+                            <span>Generate Certificate</span>
+                          </button>
+                        )
+                      )}
+                    </div>
+                  </div>
                 </div>
               );
             })}
           </div>
         </div>
       )}
+
+      {/* Certificate Preview Modal */}
+      <CertificateModal
+        isOpen={isCertModalOpen}
+        onClose={() => setIsCertModalOpen(false)}
+        certificate={selectedCertificate}
+      />
     </AppShell>
   );
 }

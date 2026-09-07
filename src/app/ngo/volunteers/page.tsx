@@ -7,7 +7,8 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useAuth } from '@/lib/auth-context';
 import { useMarketplace } from '@/lib/marketplace-context';
-import { HoursVerificationStatus, AttendanceStatus } from '@/lib/types';
+import { HoursVerificationStatus, AttendanceStatus, VolunteerCertificate } from '@/lib/types';
+import CertificateModal from '@/components/certificates/CertificateModal';
 import {
   Users,
   Search,
@@ -15,6 +16,7 @@ import {
   Clock,
   Calendar,
   ExternalLink,
+  Award,
 } from 'lucide-react';
 
 export default function NgoVolunteersManagementPage() {
@@ -24,6 +26,9 @@ export default function NgoVolunteersManagementPage() {
     activityRecords,
     verifyVolunteerHours,
     recordAttendanceAndHours,
+    generateCertificateForRecord,
+    getCertificateForRecord,
+    getCertificateById,
   } = useMarketplace();
 
   const currentNgoId = profile?.id === 'ngo-demo-1' ? 'ngo-1' : profile?.id || 'ngo-1';
@@ -35,6 +40,8 @@ export default function NgoVolunteersManagementPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterHoursStatus, setFilterHoursStatus] = useState<'ALL' | HoursVerificationStatus>('ALL');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [selectedCertificate, setSelectedCertificate] = useState<VolunteerCertificate | null>(null);
+  const [isCertModalOpen, setIsCertModalOpen] = useState(false);
 
   // Summary Metrics
   const uniqueVolunteersCount = new Set(myRecords.map((r) => r.volunteerProfileId)).size;
@@ -81,6 +88,29 @@ export default function NgoVolunteersManagementPage() {
     });
     setToastMessage(`Attendance updated to ${nextStatus}.`);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleGenerateCertificate = (recordId: string) => {
+    const res = generateCertificateForRecord(recordId);
+    if (res.success && res.certificate) {
+      setSelectedCertificate(res.certificate);
+      setIsCertModalOpen(true);
+      setToastMessage(`Official certificate generated for ${res.certificate.volunteerFullName}! Push notification sent.`);
+    } else {
+      setToastMessage(res.message || 'Could not generate certificate.');
+    }
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  const handleViewCertificate = (recordId: string, certId?: string) => {
+    const cert = (certId ? getCertificateById(certId) : null) || getCertificateForRecord(recordId);
+    if (cert) {
+      setSelectedCertificate(cert);
+      setIsCertModalOpen(true);
+    } else {
+      setToastMessage('Certificate not found.');
+      setTimeout(() => setToastMessage(null), 3000);
+    }
   };
 
   return (
@@ -262,7 +292,7 @@ export default function NgoVolunteersManagementPage() {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">
                     <Link
                       href={`/ngo/opportunities/${rec.opportunityId}/participants`}
                       className="px-3 py-1.5 text-xs font-medium text-[#6B6870] bg-[#FBFAF8] border border-[#E8E3E8] rounded-lg hover:bg-[#FAF5FA] transition-colors"
@@ -270,7 +300,7 @@ export default function NgoVolunteersManagementPage() {
                       Open Roster
                     </Link>
 
-                    {!isVerified && (
+                    {!isVerified ? (
                       <button
                         type="button"
                         onClick={() => handleVerifyHours(rec.id)}
@@ -278,6 +308,26 @@ export default function NgoVolunteersManagementPage() {
                       >
                         Verify Hours
                       </button>
+                    ) : isAttended && (
+                      rec.certificateIssued || getCertificateForRecord(rec.id) ? (
+                        <button
+                          type="button"
+                          onClick={() => handleViewCertificate(rec.id, rec.certificateId)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#6D3A70] bg-[#F1E7F3] hover:bg-[#E8D9EB] rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Award className="w-3.5 h-3.5" />
+                          <span>View Certificate</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleGenerateCertificate(rec.id)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#6D3A70] hover:bg-[#552C59] rounded-lg shadow-xs transition-colors cursor-pointer"
+                        >
+                          <Award className="w-3.5 h-3.5" />
+                          <span>Generate Certificate</span>
+                        </button>
+                      )
                     )}
                   </div>
                 </div>
@@ -286,6 +336,13 @@ export default function NgoVolunteersManagementPage() {
           })}
         </div>
       )}
+
+      {/* Certificate Preview Modal */}
+      <CertificateModal
+        isOpen={isCertModalOpen}
+        onClose={() => setIsCertModalOpen(false)}
+        certificate={selectedCertificate}
+      />
     </AppShell>
   );
 }

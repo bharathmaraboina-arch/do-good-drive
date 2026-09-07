@@ -48,6 +48,7 @@ interface FeedContextType {
 
   markNotificationAsRead: (id: string) => void;
   markAllNotificationsAsRead: () => void;
+  addNotification: (notif: Omit<NotificationItem, 'id' | 'createdAt'>) => NotificationItem;
 
   getUnifiedFeed: (activeRole: UserRole | null) => UnifiedFeedItem[];
 
@@ -292,6 +293,16 @@ export function FeedProvider({ children }: { children: React.ReactNode }) {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
+  const addNotification = (notifData: Omit<NotificationItem, 'id' | 'createdAt'>): NotificationItem => {
+    const newNotif: NotificationItem = {
+      ...notifData,
+      id: 'notif-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+      createdAt: new Date().toISOString(),
+    };
+    setNotifications((prev) => [newNotif, ...prev]);
+    return newNotif;
+  };
+
   const unreadNotificationsCount = useMemo(
     () => notifications.filter((n) => !n.read).length,
     [notifications]
@@ -499,6 +510,7 @@ export function FeedProvider({ children }: { children: React.ReactNode }) {
         getPostById,
         markNotificationAsRead,
         markAllNotificationsAsRead,
+        addNotification,
         getUnifiedFeed,
         interactivePosts,
         createInteractivePost,

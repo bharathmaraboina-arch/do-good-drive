@@ -9,6 +9,7 @@ import {
   Sparkles,
   CheckCircle2,
   Building2,
+  Award,
 } from 'lucide-react';
 import { useFeed } from '@/lib/feed-context';
 import { NotificationType } from '@/lib/types';
@@ -41,6 +42,8 @@ export function NotificationDropdown() {
         return <CheckCircle2 className="w-3.5 h-3.5 text-[#15803D]" />;
       case 'CONNECTION_STATUS_CHANGED':
         return <Building2 className="w-3.5 h-3.5 text-[#6D3A70]" />;
+      case 'CERTIFICATE_GENERATED':
+        return <Award className="w-3.5 h-3.5 text-[#6D3A70]" />;
       default:
         return <Bell className="w-3.5 h-3.5 text-[#6B6870]" />;
     }

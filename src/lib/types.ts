@@ -127,8 +127,35 @@ export interface ActivityCompletionRecord {
   verifiedAt?: string;
   verifiedByNgoId?: string;
   notes?: string;
+  certificateIssued?: boolean;
+  certificateId?: string;
+  certificateIssuedAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface VolunteerCertificate {
+  id: string;
+  recordId: string;
+  certificateNumber: string;
+  volunteerProfileId: string;
+  volunteerFullName: string;
+  volunteerAvatarUrl?: string;
+  ngoProfileId: string;
+  ngoName: string;
+  ngoLogoUrl?: string;
+  ngoRegistrationNumber?: string;
+  ngoRepresentativeName: string;
+  ngoRepresentativeTitle: string;
+  opportunityId: string;
+  opportunityTitle: string;
+  cause: string;
+  activityDate: string;
+  hours: number;
+  verifiedAt: string;
+  issuedAt: string;
+  notes?: string;
+  verificationCode: string;
 }
 
 export interface VolunteerImpactSummary {
@@ -282,7 +309,8 @@ export type NotificationType =
   | 'NGO_OPPORTUNITY_PUBLISHED'
   | 'NGO_POST_PUBLISHED'
   | 'APPLICATION_STATUS_CHANGED'
-  | 'CONNECTION_STATUS_CHANGED';
+  | 'CONNECTION_STATUS_CHANGED'
+  | 'CERTIFICATE_GENERATED';
 
 export interface NotificationItem {
   id: string;

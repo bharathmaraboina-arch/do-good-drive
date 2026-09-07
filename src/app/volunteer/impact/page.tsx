@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -16,11 +16,22 @@ import {
   ArrowRight,
   ExternalLink,
   ShieldCheck,
+  Award,
 } from 'lucide-react';
+import CertificateModal from '@/components/certificates/CertificateModal';
+import { VolunteerCertificate } from '@/lib/types';
 
 export default function VolunteerImpactPage() {
   const { profile } = useAuth();
-  const { getImpactSummaryForVolunteer } = useMarketplace();
+  const {
+    getImpactSummaryForVolunteer,
+    getCertificateForRecord,
+    getCertificateById,
+    getCumulativeCertificateForVolunteer,
+  } = useMarketplace();
+
+  const [selectedCertificate, setSelectedCertificate] = useState<VolunteerCertificate | null>(null);
+  const [isCertModalOpen, setIsCertModalOpen] = useState(false);
 
   const volId = profile?.id || 'vol-1';
   const summary = getImpactSummaryForVolunteer(volId);
@@ -48,6 +59,40 @@ export default function VolunteerImpactPage() {
           </span>
         }
       />
+
+      {/* Cumulative Impact Certificate Banner */}
+      {totalVerifiedHours > 0 && (
+        <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-[#FAF5FA] via-[#F1E7F3]/40 to-[#FAF5FA] border border-[#E8E3E8] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#6D3A70] text-white flex items-center justify-center shrink-0 shadow-sm">
+              <Award className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[#25232A]">
+                Cumulative Service Accreditation Available
+              </h3>
+              <p className="text-xs text-[#6B6870]">
+                {totalVerifiedHours.toFixed(1)} certified hours across {activitiesCompletedCount} community initiatives. You can view or download your cumulative master credential.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              const cumulCert = getCumulativeCertificateForVolunteer(volId);
+              if (cumulCert) {
+                setSelectedCertificate(cumulCert);
+                setIsCertModalOpen(true);
+              }
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-[#6D3A70] hover:bg-[#552C59] rounded-lg shadow-sm transition-colors cursor-pointer shrink-0"
+          >
+            <Award className="w-4 h-4" />
+            <span>View Cumulative Certificate</span>
+          </button>
+        </div>
+      )}
 
       {/* Official Verified Contribution Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
@@ -183,65 +228,95 @@ export default function VolunteerImpactPage() {
           />
         ) : (
           <div className="space-y-3">
-            {verifiedRecords.map((rec) => (
-              <div
-                key={rec.id}
-                className="bg-white rounded-xl border border-[#E8E3E8] p-5 shadow-xs hover:border-[#6D3A70]/40 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
-              >
-                <div className="max-w-xl space-y-1.5">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-[#FAF5FA] text-[#6B6870] border border-[#E8E3E8]">
-                      {rec.cause}
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-[10px] text-[#15803D] font-semibold bg-[#DCFCE7] px-2 py-0.5 rounded">
-                      <CheckCircle2 className="w-3 h-3 text-[#15803D]" />
-                      <span>Verified Contribution</span>
-                    </span>
-                  </div>
-
-                  <h3 className="text-base font-bold text-[#25232A]">{rec.opportunityTitle}</h3>
-
-                  <div className="flex items-center gap-4 text-xs text-[#8B8790] flex-wrap">
-                    <div className="flex items-center gap-1">
-                      <Building2 className="w-3.5 h-3.5 text-[#6D3A70]" />
-                      <span className="font-semibold text-[#25232A]">{rec.ngoName}</span>
+            {verifiedRecords.map((rec) => {
+              const cert = (rec.certificateId ? getCertificateById(rec.certificateId) : null) || getCertificateForRecord(rec.id);
+              return (
+                <div
+                  key={rec.id}
+                  className="bg-white rounded-xl border border-[#E8E3E8] p-5 shadow-xs hover:border-[#6D3A70]/40 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                >
+                  <div className="max-w-xl space-y-1.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-[#FAF5FA] text-[#6B6870] border border-[#E8E3E8]">
+                        {rec.cause}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[10px] text-[#15803D] font-semibold bg-[#DCFCE7] px-2 py-0.5 rounded">
+                        <CheckCircle2 className="w-3 h-3 text-[#15803D]" />
+                        <span>Verified Contribution</span>
+                      </span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5 text-[#6D3A70]" />
-                      <span>Service Date: {rec.activityDate}</span>
+
+                    <h3 className="text-base font-bold text-[#25232A]">{rec.opportunityTitle}</h3>
+
+                    <div className="flex items-center gap-4 text-xs text-[#8B8790] flex-wrap">
+                      <div className="flex items-center gap-1">
+                        <Building2 className="w-3.5 h-3.5 text-[#6D3A70]" />
+                        <span className="font-semibold text-[#25232A]">{rec.ngoName}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-[#6D3A70]" />
+                        <span>Service Date: {rec.activityDate}</span>
+                      </div>
+                    </div>
+
+                    {rec.notes && (
+                      <p className="text-xs text-[#6B6870] italic bg-[#FBFAF8] p-2.5 rounded-lg border border-[#E8E3E8] mt-2 leading-relaxed">
+                        &ldquo;{rec.notes}&rdquo;
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center md:flex-col md:items-end justify-between md:justify-center gap-2 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-[#E8E3E8]">
+                    <div className="text-right">
+                      <span className="text-2xl font-bold text-[#6D3A70] block">
+                        {rec.hours.toFixed(1)} <span className="text-xs font-semibold text-[#8B8790]">hrs</span>
+                      </span>
+                      <span className="text-[10px] text-[#8B8790] block">
+                        Verified {rec.verifiedAt ? new Date(rec.verifiedAt).toLocaleDateString() : 'Official'}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      {cert ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCertificate(cert);
+                            setIsCertModalOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#6D3A70] bg-[#F1E7F3] hover:bg-[#E8D9EB] rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Award className="w-3.5 h-3.5" />
+                          <span>View Official Certificate</span>
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-[#8B8790] italic">
+                          Certificate pending issuance by {rec.ngoName}
+                        </span>
+                      )}
+
+                      <Link
+                        href={`/volunteer/opportunities/${rec.opportunityId}`}
+                        className="inline-flex items-center gap-1 text-xs text-[#6B6870] hover:text-[#6D3A70] hover:underline font-medium ml-1"
+                      >
+                        <span>View Drive</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </Link>
                     </div>
                   </div>
-
-                  {rec.notes && (
-                    <p className="text-xs text-[#6B6870] italic bg-[#FBFAF8] p-2.5 rounded-lg border border-[#E8E3E8] mt-2 leading-relaxed">
-                      &ldquo;{rec.notes}&rdquo;
-                    </p>
-                  )}
                 </div>
-
-                <div className="flex items-center md:flex-col md:items-end justify-between md:justify-center gap-2 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-[#E8E3E8]">
-                  <div className="text-right">
-                    <span className="text-2xl font-bold text-[#6D3A70] block">
-                      {rec.hours.toFixed(1)} <span className="text-xs font-semibold text-[#8B8790]">hrs</span>
-                    </span>
-                    <span className="text-[10px] text-[#8B8790] block">
-                      Verified {rec.verifiedAt ? new Date(rec.verifiedAt).toLocaleDateString() : 'Official'}
-                    </span>
-                  </div>
-
-                  <Link
-                    href={`/volunteer/opportunities/${rec.opportunityId}`}
-                    className="inline-flex items-center gap-1 text-xs text-[#6D3A70] hover:underline font-medium"
-                  >
-                    <span>View Drive</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </Link>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
+
+      {/* Certificate Preview Modal */}
+      <CertificateModal
+        isOpen={isCertModalOpen}
+        onClose={() => setIsCertModalOpen(false)}
+        certificate={selectedCertificate}
+      />
     </AppShell>
   );
 }
