@@ -15,10 +15,14 @@ import {
   Clock,
   AlertCircle,
   Save,
-  Check,
   Award,
   ExternalLink,
+  QrCode,
+  Sparkles,
+  ArrowRight,
+  Check,
 } from 'lucide-react';
+import QrAttendanceDemoModal from '@/components/pro/QrAttendanceDemoModal';
 
 interface ParticipantsPageProps {
   params: Promise<{ id: string }>;
@@ -59,6 +63,7 @@ export default function OpportunityParticipantsPage({ params }: ParticipantsPage
   const [toastMessage, setToastMessage] = useState<{ text: string; isError?: boolean } | null>(null);
   const [selectedCertificate, setSelectedCertificate] = useState<VolunteerCertificate | null>(null);
   const [isCertModalOpen, setIsCertModalOpen] = useState(false);
+  const [isQrDemoOpen, setIsQrDemoOpen] = useState(false);
 
   if (!opp) {
     return (
@@ -294,6 +299,46 @@ export default function OpportunityParticipantsPage({ params }: ParticipantsPage
             Official Impact Hours
           </span>
           <p className="text-2xl font-bold text-[#25232A] mt-1">{totalVerifiedHours.toFixed(1)} hrs</p>
+        </div>
+      </div>
+
+      {/* Contextual Pro Product Advertising Banner: QR Attendance Kiosk */}
+      <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-[#FAF5FA] via-[#F1E7F3]/50 to-[#FAF5FA] border border-[#E8E3E8] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-lg bg-[#6D3A70] text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
+            <QrCode className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h4 className="text-xs font-bold text-[#25232A]">
+                Tired of Manual Roll Calls? Upgrade to QR Attendance Kiosks
+              </h4>
+              <span className="text-[9.5px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-[#FEF3C7] text-[#B45309] border border-[#F59E0B]/30">
+                ImpactOS Pro
+              </span>
+            </div>
+            <p className="text-[11px] text-[#6B6870] mt-0.5">
+              Volunteers scan your tablet or event sign with their phone. GPS geofencing confirms attendance and logs hours automatically without paper sign-in sheets.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsQrDemoOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#6D3A70] bg-white border border-[#E8E3E8] hover:border-[#6D3A70] rounded-lg shadow-2xs transition-colors cursor-pointer"
+          >
+            <QrCode className="w-3.5 h-3.5" />
+            <span>Try Live QR Demo</span>
+          </button>
+          <Link
+            href="/solutions/pro"
+            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-white bg-[#6D3A70] hover:bg-[#552C59] rounded-lg shadow-2xs transition-colors"
+          >
+            <span>Upgrade ($39/mo)</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
       </div>
 
@@ -556,6 +601,13 @@ export default function OpportunityParticipantsPage({ params }: ParticipantsPage
         isOpen={isCertModalOpen}
         onClose={() => setIsCertModalOpen(false)}
         certificate={selectedCertificate}
+      />
+
+      {/* QR Attendance Demo Modal */}
+      <QrAttendanceDemoModal
+        isOpen={isQrDemoOpen}
+        onClose={() => setIsQrDemoOpen(false)}
+        opportunityTitle={opp.title}
       />
     </AppShell>
   );

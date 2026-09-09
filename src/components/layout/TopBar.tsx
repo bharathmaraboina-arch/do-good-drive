@@ -23,6 +23,7 @@ import {
   Briefcase,
   PlusCircle,
   ExternalLink,
+  Sparkles,
 } from 'lucide-react';
 import { UserRole } from '@/lib/types';
 import { NotificationDropdown } from './NotificationDropdown';
@@ -171,6 +172,16 @@ export function TopBar({ onToggleMobileSidebar }: TopBarProps) {
 
         {/* Right: Role Switcher, Notifications & Me Profile */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* LinkedIn-Style "Try Pro" Accent Button */}
+          <Link
+            href="/solutions/pro"
+            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-[#B45309] bg-[#FEF3C7] hover:bg-[#FDE68A] border border-[#F59E0B]/30 rounded-lg shadow-2xs transition-colors shrink-0"
+            title="Explore ImpactOS Pro for NGOs & Corporates"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-[#D97706]" />
+            <span>Try Pro</span>
+          </Link>
+
           {/* Fast Role Switcher */}
           <div className="relative">
             <button
@@ -283,6 +294,22 @@ export function TopBar({ onToggleMobileSidebar }: TopBarProps) {
                     className="block px-4 py-1.5 text-xs text-[#6B6870] hover:text-[#25232A] hover:bg-[#FAF5FA] transition-colors"
                   >
                     Operations Hub
+                  </Link>
+                </div>
+
+                {/* Pro Upgrade Callout in Me Menu */}
+                <div className="border-t border-[#E8E3E8] pt-1 mt-1 bg-[#FAF5FA]/60">
+                  <Link
+                    href="/solutions/pro"
+                    className="flex items-center justify-between px-4 py-2 text-xs font-bold text-[#6D3A70] hover:bg-[#F1E7F3] transition-colors"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-[#D97706]" />
+                      <span>Upgrade to Pro</span>
+                    </span>
+                    <span className="text-[9.5px] font-extrabold text-[#B45309] bg-[#FEF3C7] border border-[#F59E0B]/30 px-1.5 py-0.5 rounded">
+                      Free Trial
+                    </span>
                   </Link>
                 </div>
 

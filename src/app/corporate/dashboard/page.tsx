@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -8,6 +8,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { useAuth } from '@/lib/auth-context';
 import { useOnboarding } from '@/lib/onboarding-context';
 import { useCorporate } from '@/lib/corporate-context';
+import AnalyticsReportDemoModal from '@/components/pro/AnalyticsReportDemoModal';
 import {
   Building2,
   Bookmark,
@@ -15,12 +16,16 @@ import {
   ExternalLink,
   Search,
   Send,
+  Sparkles,
+  BarChart3,
+  ShieldCheck,
 } from 'lucide-react';
 
 export default function CorporateDashboardPage() {
   const { profile } = useAuth();
   const { corporateProfile, verifications } = useOnboarding();
   const { ngos, shortlistedNgoIds, connectionRequests } = useCorporate();
+  const [isAnalyticsDemoOpen, setIsAnalyticsDemoOpen] = useState(false);
 
   const currentCorpId = profile?.id || 'corp-1';
   const myRequests = connectionRequests.filter((r) => r.corporateProfileId === currentCorpId);
@@ -276,8 +281,67 @@ export default function CorporateDashboardPage() {
               </Link>
             </div>
           </div>
+
+          {/* Enterprise CSR & ESG Suite Showcase Card */}
+          <div className="bg-gradient-to-b from-white via-[#FAF5FA]/50 to-white rounded-xl border border-[#E8E3E8] p-5 shadow-xs relative overflow-hidden space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#6D3A70] flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-[#D97706]" />
+                <span>Enterprise CSR &amp; ESG Suite</span>
+              </span>
+              <span className="text-[9.5px] font-extrabold text-[#B45309] bg-[#FEF3C7] border border-[#F59E0B]/30 px-1.5 py-0.5 rounded">
+                Enterprise
+              </span>
+            </div>
+
+            <div className="space-y-1">
+              <h4 className="text-xs font-bold text-[#25232A]">
+                ESG Disclosures &amp; Employee Volunteering
+              </h4>
+              <p className="text-[11px] text-[#6B6870] leading-relaxed">
+                Streamline corporate social responsibility with audit-ready GRI/CSRD reporting, payroll donation matching, and employee volunteering tracking.
+              </p>
+            </div>
+
+            <div className="space-y-1.5 pt-1 text-[11px] text-[#25232A]">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-3.5 h-3.5 text-[#6D3A70]" />
+                <span>Automated Audit-Ready ESG Reports</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#15803D]" />
+                <span>Verified 501(c)(3) Tax Receipt Logs</span>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-[#E8E3E8] flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => setIsAnalyticsDemoOpen(true)}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#6D3A70] hover:underline cursor-pointer"
+              >
+                <span>Sample ESG Report</span>
+                <ExternalLink className="w-3 h-3" />
+              </button>
+
+              <Link
+                href="/solutions/pro"
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-white bg-[#6D3A70] hover:bg-[#552C59] rounded-lg shadow-2xs transition-colors"
+              >
+                <span>Explore Solutions</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Analytics Demo Modal */}
+      <AnalyticsReportDemoModal
+        isOpen={isAnalyticsDemoOpen}
+        onClose={() => setIsAnalyticsDemoOpen(false)}
+        entityName={corporateProfile?.companyName || 'EcoTech Partners'}
+      />
     </AppShell>
   );
 }

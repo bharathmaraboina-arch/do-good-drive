@@ -32,6 +32,7 @@ import {
   ArrowRight,
   ExternalLink,
 } from 'lucide-react';
+import SponsoredProductCard from '@/components/pro/SponsoredProductCard';
 
 export default function LinkedInCommunityFeedPage() {
   const { profile, role } = useAuth();
@@ -443,6 +444,27 @@ export default function LinkedInCommunityFeedPage() {
                     {post.content}
                   </p>
 
+                  {/* Promoted Product CTA Box (if sponsored post) */}
+                  {post.authorProfileId === 'dogooddrive-pro' && (
+                    <div className="p-3.5 rounded-xl bg-gradient-to-r from-[#FAF5FA] via-[#F1E7F3]/60 to-[#FAF5FA] border border-[#E8E3E8] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                      <div className="space-y-0.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#B45309] block">
+                          ImpactOS Pro &bull; 14-Day Free Trial
+                        </span>
+                        <p className="text-xs font-bold text-[#25232A]">
+                          Ready to automate QR attendance and audit-ready reports?
+                        </p>
+                      </div>
+                      <Link
+                        href="/solutions/pro"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-[#6D3A70] hover:bg-[#552C59] rounded-lg shadow-xs transition-colors shrink-0"
+                      >
+                        <span>Explore Pro Solutions</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
+                  )}
+
                   {/* Reaction Summary Counts Bar */}
                   <div className="flex items-center justify-between text-[11px] text-[#6B6870] pt-2 border-t border-[#E8E3E8]">
                     <div className="flex items-center gap-1.5">
@@ -622,6 +644,9 @@ export default function LinkedInCommunityFeedPage() {
               ))}
             </div>
           </div>
+
+          {/* Native Sponsored Product Spotlight (ImpactOS Pro Monetization) */}
+          <SponsoredProductCard />
 
           {/* Verified NGO Spotlight */}
           <div className="bg-white rounded-xl border border-[#E8E3E8] p-4 shadow-xs space-y-3">

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -8,6 +8,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { useAuth } from '@/lib/auth-context';
 import { useOnboarding } from '@/lib/onboarding-context';
 import { useMarketplace } from '@/lib/marketplace-context';
+import QrAttendanceDemoModal from '@/components/pro/QrAttendanceDemoModal';
 import {
   HandHeart,
   Users,
@@ -15,12 +16,17 @@ import {
   Clock,
   ArrowRight,
   FileText,
+  QrCode,
+  Sparkles,
+  BarChart3,
+  ExternalLink,
 } from 'lucide-react';
 
 export default function NgoDashboardPage() {
   const { profile } = useAuth();
   const { verifications } = useOnboarding();
   const { opportunities, getApplicationsForNgo } = useMarketplace();
+  const [isQrDemoOpen, setIsQrDemoOpen] = useState(false);
 
   const currentNgoId = profile?.id === 'ngo-demo-1' ? 'ngo-1' : profile?.id || 'ngo-1';
   const myOpportunities = opportunities.filter((o) => o.ngoProfileId === currentNgoId);
@@ -285,8 +291,66 @@ export default function NgoDashboardPage() {
               </div>
             )}
           </div>
+
+          {/* ImpactOS Pro for Non-Profits Promotional Card */}
+          <div className="bg-gradient-to-b from-white via-[#FAF5FA]/50 to-white rounded-xl border border-[#E8E3E8] p-5 shadow-xs relative overflow-hidden space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#6D3A70] flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-[#D97706]" />
+                <span>ImpactOS Pro for Non-Profits</span>
+              </span>
+              <span className="text-[9.5px] font-extrabold text-[#B45309] bg-[#FEF3C7] border border-[#F59E0B]/30 px-1.5 py-0.5 rounded">
+                14-Day Free
+              </span>
+            </div>
+
+            <div className="space-y-1">
+              <h4 className="text-xs font-bold text-[#25232A]">
+                Automate Attendance, Reports &amp; Certificates
+              </h4>
+              <p className="text-[11px] text-[#6B6870] leading-relaxed">
+                Save 12+ administrative hours weekly with dynamic QR kiosks, 1-click board reports, and automated credential dispatch.
+              </p>
+            </div>
+
+            <div className="space-y-1.5 pt-1 text-[11px] text-[#25232A]">
+              <div className="flex items-center gap-2">
+                <QrCode className="w-3.5 h-3.5 text-[#6D3A70]" />
+                <span>Dynamic QR Kiosks (GPS-verified)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-3.5 h-3.5 text-[#6D3A70]" />
+                <span>IRS Form 990 &amp; Board PDF/Excel Exports</span>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-[#E8E3E8] flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => setIsQrDemoOpen(true)}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#6D3A70] hover:underline cursor-pointer"
+              >
+                <span>Live QR Demo</span>
+                <ExternalLink className="w-3 h-3" />
+              </button>
+
+              <Link
+                href="/solutions/pro"
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-white bg-[#6D3A70] hover:bg-[#552C59] rounded-lg shadow-2xs transition-colors"
+              >
+                <span>Explore Pro</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* QR Demo Modal */}
+      <QrAttendanceDemoModal
+        isOpen={isQrDemoOpen}
+        onClose={() => setIsQrDemoOpen(false)}
+      />
     </AppShell>
   );
 }
